@@ -1,4 +1,3 @@
 # Projects
-My projects, practics, and showroom
+My projects, practics, and showroom. 
 Feel free to look around!
-Elai
