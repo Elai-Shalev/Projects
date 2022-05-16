@@ -1,2 +1,4 @@
-# Various_Projects
-My projects, practics, and showroom
+# Projects
+My projects, practics, and showroom.
+Feel free to look around!
+Elai
