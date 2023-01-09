@@ -9,32 +9,56 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-
-
+#define MB 1000000
 
 int main(int argc, char* argv[]){
 
     uint32_t file_size; 
-    int fd; 
+    FILE * fd;
+    uint32_t N_nbo; 
+
     int  sockfd     = -1;
+    int client_to_srver_fd    = -1;
+    int client_to_srver_fd    = -1;
     int  bytes_read =  0;
+    int bytes_written = 0;
+    int bytes_left =0;
+    int nsent =0;
+    
+    char recv_buff[1024];
+    char send_buff[1024];
+
+
 
     struct sockaddr_in serv_addr; // where we Want to get to
     struct sockaddr_in client_addr;   // where we actually connected through 
     struct sockaddr_in peer_addr; // where we actually connected to
     socklen_t addrsize = sizeof(struct sockaddr_in );
 
+    char* content; 
+
+    
     if(argc != 4){
         perror("Invalid Input!\n");
         exit(1);
     }
 
-    fd = open(argv[3], "O_RDONLY");
+    fd = fopen(argv[3], "O_RDONLY");
     if (fd < 1){
         perror("Error opening file");
         exit(1);
     }
 
+    // get file size in Network Byte order
+    file_size = get_file_size(fd);
+    N_nbo = htons(file_size);
+
+    content = (char*)malloc(sizeof(char)*MB); 
+    if(content < 0){
+        perror("insufficient memory \n");
+        exit(1);
+    }
+    
     sockfd = socket(AF_INET, SOCK_STREAM);
     if (sockfd < 0){
         // ERROR
@@ -45,6 +69,63 @@ int main(int argc, char* argv[]){
     serv_addr.sin_family = AF_INET; 
     serv_addr.sin_addr.s_addr = INADDR_ANY; 
     serv_addr.sin_port = htonl(argv[2]);
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(10000); // Note: htons for endiannes
+    serv_addr.sin_addr.s_addr = inet_addr(inet_pton(argv[1])); 
+
+    if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+        printf("\n Error : Connect Failed. %s \n", strerror(errno)); // CHANGE
+        exit(1);
+    }
+
+    // sending N 
+    memset(send_buff, N_nbo, sizeof(N_nbo));
+    while( bytes_left > 0 )
+    {
+        nsent = write(sockfd, send_buff + totalsent, bytes_left);
+        // check if error occured (client closed connection?)
+        assert( nsent >= 0);
+        bytes_written  += nsent;
+        bytes_left -= nsent;
+    }
+
+    memset(send_buff, 0, sizeof(send_buff));
+    bytes_left = file_size; 
+    bytes_written = 0; 
+    
+    while(bytes_left > 0){
+        
+        nread = write(fd, send_buff, )
+        nsent = write(sockfd, send_buff + totalsent, bytes_left);
+        // check if error occured (client closed connection?)
+        assert( nsent >= 0);
+        
+        bytes_written  += nsent;
+        bytes_left -= nsent;
+    }
+
+
+
+
+
+
+uint32_t get_file_size(FILE* fd){
+
+    uint32_t size;
+    // Code from Stack OverFlow
+    //https://stackoverflow.com/questions/238603/how-can-i-get-a-files-size-in-c
+    fseek(fd, 0, SEEK_END); // seek to end of file
+    size = (uint32_t)ftell(fd); // get current file pointer
+    fseek(fd, 0, SEEK_SET); // seek back to beginning of file
+    return size;
+}
+
+
+
+
+
 
 
     
