@@ -63,8 +63,8 @@ int main(int argc, char* argv[]){
     
     sockfd = socket(AF_INET, SOCK_STREAM);
     if (sockfd < 0){
-        // ERROR
-        //exit(1); // ??
+        perror("Could not create socket \n");
+        exit(1);
     }
 
     memset(&serv_addr, 0, sizeof(serv_addr));
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]){
     serv_addr.sin_addr.s_addr = inet_addr(inet_pton(argv[1])); 
 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-        printf("\n Error : Connect Failed. %s \n", strerror(errno)); // CHANGE
+        perror(" Could not connect \n");
         exit(1);
     }
 
@@ -90,8 +90,9 @@ int main(int argc, char* argv[]){
         n_sent = write(sockfd, send_buff + bytes_written, bytes_left);
         // check if error occured (client closed connection?)
         
-        if(n_sent <= 0){
-            // ERROR 
+        if(n_sent < 0){
+            perror(" Write call failed \n");
+            exit(1);
         }
 
         bytes_written  += n_sent;
@@ -112,8 +113,9 @@ int main(int argc, char* argv[]){
 
         // 1 MB of data in buffer
         n = fread(send_buff, sizeof(char), MB/sizeof(char), fd);
-        if (n <= 0){
-            // ERROR
+        if (n < 0){
+            perror(" Fread call failed \n");
+            exit(1);
         }
         left_in_buff = n; 
         read_from_buff = 0; 
@@ -121,8 +123,9 @@ int main(int argc, char* argv[]){
         while(left_in_buff > 0){
             n_sent = write(sockfd, send_buff + read_from_buff, left_in_buff);
             // check if error occured (client closed connection?)
-            if(n_sent <= 0){
-            // ERROR 
+            if(n_sent < 0){
+                perror(" write call failed \n");
+                exit(1);
             }
             
             read_from_buff  += nsent;
@@ -140,8 +143,9 @@ int main(int argc, char* argv[]){
     while(bytes_read < N_SIZE){
 
         n = read(sockfd, recv_buff + bytes_read, N_SIZE);
-        if(n <= 0){
-            // ERROR?
+        if(n < 0){
+            perror("read call failed \n");
+            exit(1);
         }
         bytes_read += n;
         bytes_left -= n;
