@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 
 #define MB 1000000
+#define N_SIZE 4
 
 int main(int argc, char* argv[]){
 
@@ -17,25 +18,25 @@ int main(int argc, char* argv[]){
     FILE * fd;
     uint32_t N_nbo; 
 
-    int  sockfd     = -1;
+    int sockfd     = -1;
     int client_to_srver_fd    = -1;
     int client_to_srver_fd    = -1;
-    int  bytes_read =  0;
-    int bytes_written = 0;
-    int bytes_left =0;
-    int nsent =0;
+    int read_from_buff =  0;
+    int written_to_buff = 0;
+    int left_in_buff =0;
+    int total_sent 0;
+    int total_left 0;
+    int n_sent = 0;
     
-    char recv_buff[1024];
-    char send_buff[1024];
-
+    char recv_buff;
+    char send_buff;
 
 
     struct sockaddr_in serv_addr; // where we Want to get to
     struct sockaddr_in client_addr;   // where we actually connected through 
     struct sockaddr_in peer_addr; // where we actually connected to
     socklen_t addrsize = sizeof(struct sockaddr_in );
-
-    char* content; 
+    
 
     
     if(argc != 4){
@@ -53,8 +54,8 @@ int main(int argc, char* argv[]){
     file_size = get_file_size(fd);
     N_nbo = htons(file_size);
 
-    content = (char*)malloc(sizeof(char)*MB); 
-    if(content < 0){
+    send_buff = (char*)malloc(MB); 
+    if(send_buff < 0){
         perror("insufficient memory \n");
         exit(1);
     }
@@ -81,30 +82,64 @@ int main(int argc, char* argv[]){
     }
 
     // sending N 
-    memset(send_buff, N_nbo, sizeof(N_nbo));
-    while( bytes_left > 0 )
+    memset(send_buff, N_nbo, N_SIZE);
+    bytes_left = N_SIZE; // N is a 32 bit number 
+    while(bytes_left > 0)
     {
-        nsent = write(sockfd, send_buff + totalsent, bytes_left);
+        n_sent = write(sockfd, send_buff, bytes_left);
         // check if error occured (client closed connection?)
-        assert( nsent >= 0);
-        bytes_written  += nsent;
-        bytes_left -= nsent;
+        
+        if(n_sent <= 0){
+            // ERROR 
+        }
+
+        bytes_written  += n_sent;
+        bytes_left -= n_sent;
     }
 
-    memset(send_buff, 0, sizeof(send_buff));
-    bytes_left = file_size; 
-    bytes_written = 0; 
+    // N is sent 
+    // Now sending the data 
+
+    memset(send_buff, 0, MB);
+
+    total_left = file_size; 
+    total_bytes_sent = 0; 
+    read_from_buff = 0; 
+    written_to_buff = 0; 
     
-    while(bytes_left > 0){
+    while(total_left > 0){
+
+        // 1 MB of data in buffer
+        n = fread(send_buff, sizeof(char), MB/sizeof(char), fd);
+        if (n <= 0){
+            // ERROR
+        }
+        left_in_buff = n; 
+        read_from_buff = 0; 
         
-        nread = write(fd, send_buff, )
-        nsent = write(sockfd, send_buff + totalsent, bytes_left);
-        // check if error occured (client closed connection?)
-        assert( nsent >= 0);
-        
-        bytes_written  += nsent;
-        bytes_left -= nsent;
+
+        while(left_in_buff > 0){
+
+            nread = write(fd, send_buff, )
+            nsent = write(sockfd, send_buff + totalsent, bytes_left);
+            // check if error occured (client closed connection?)
+            assert( nsent >= 0);
+            
+            bytes_written  += nsent;
+            bytes_left -= nsent;
+        }
+
     }
+
+
+
+
+
+    free(send_buff);
+    free(recv_buff);
+    return 0; 
+    
+
 
 
 
