@@ -11,6 +11,7 @@
 
 #define MB 1000000
 #define N_SIZE 4
+uint32_t get_file_size(FILE* fd);
 
 int main(int argc, char* argv[]){
 
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]){
     int total_sent 0;
     int total_left 0;
     int n_sent = 0;
+    uint32_t C = 0;
     
     char recv_buff;
     char send_buff;
@@ -38,7 +40,6 @@ int main(int argc, char* argv[]){
     socklen_t addrsize = sizeof(struct sockaddr_in );
     
 
-    
     if(argc != 4){
         perror("Invalid Input!\n");
         exit(1);
@@ -52,7 +53,7 @@ int main(int argc, char* argv[]){
 
     // get file size in Network Byte order
     file_size = get_file_size(fd);
-    N_nbo = htons(file_size);
+    N_nbo = htonl(file_size);
 
     send_buff = (char*)malloc(MB); 
     if(send_buff < 0){
@@ -132,13 +133,8 @@ int main(int argc, char* argv[]){
         memset(send_buff, 0, MB);
 
     }
-
-    recv_buff = (char*)malloc(N_SIZE); 
-    if(recv_buff < 0){
-        perror("insufficient memory \n");
-        exit(1);
-    }
-
+    
+    recv_buff = &C;
     read_from_buff = 0; 
     bytes_left = N_SIZE;
     while(bytes_read < N_SIZE){
@@ -151,7 +147,7 @@ int main(int argc, char* argv[]){
         bytes_left -= n;
     }
 
-    printf("# of printable characters: %u\n", htonl((uint32_t)(atoi(recv_buff))));
+    printf("# of printable characters: %u\n", ntohl(C));
     free(send_buff);
     free(recv_buff);
     return 0; 
