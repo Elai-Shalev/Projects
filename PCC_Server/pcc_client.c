@@ -152,6 +152,7 @@ int main(int argc, char* argv[]){
     }
 
     printf("# of printable characters: %u\n", ntohl(C));
+    close(fd);
     free(send_buff);
     free(recv_buff);
     return 0; 
