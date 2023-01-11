@@ -86,7 +86,7 @@ int main(int argc, char* argv[]){
     bytes_left = N_SIZE; // N is a 32 bit number 
     while(bytes_left > 0)
     {
-        n_sent = write(sockfd, send_buff, bytes_left);
+        n_sent = write(sockfd, send_buff + bytes_written, bytes_left);
         // check if error occured (client closed connection?)
         
         if(n_sent <= 0){
@@ -117,34 +117,45 @@ int main(int argc, char* argv[]){
         left_in_buff = n; 
         read_from_buff = 0; 
         
-
         while(left_in_buff > 0){
-
-            nread = write(fd, send_buff, )
-            nsent = write(sockfd, send_buff + totalsent, bytes_left);
+            n_sent = write(sockfd, send_buff + read_from_buff, left_in_buff);
             // check if error occured (client closed connection?)
-            assert( nsent >= 0);
+            if(n_sent <= 0){
+            // ERROR 
+            }
             
-            bytes_written  += nsent;
-            bytes_left -= nsent;
+            read_from_buff  += nsent;
+            left_in_buff -= nsent;
         }
+        total_sent += read_from_buff;
+        total_left -= read_from_buff;
+        memset(send_buff, 0, MB);
 
     }
 
+    recv_buff = (char*)malloc(N_SIZE); 
+    if(recv_buff < 0){
+        perror("insufficient memory \n");
+        exit(1);
+    }
 
+    read_from_buff = 0; 
+    bytes_left = N_SIZE;
+    while(bytes_read < N_SIZE){
 
+        n = read(sockfd, recv_buff + bytes_read, N_SIZE);
+        if(n <= 0){
+            // ERROR?
+        }
+        bytes_read += n;
+        bytes_left -= n;
+    }
 
-
+    printf("# of printable characters: %u\n", htonl((uint32_t)(atoi(recv_buff))));
     free(send_buff);
     free(recv_buff);
     return 0; 
-    
-
-
-
-
-
-
+}
 
 uint32_t get_file_size(FILE* fd){
 
