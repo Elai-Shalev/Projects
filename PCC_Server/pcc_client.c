@@ -30,8 +30,8 @@ int main(int argc, char* argv[]){
     int n_sent = 0;
     uint32_t C = 0;
     
-    char recv_buff;
-    char send_buff;
+    char* recv_buff;
+    char* send_buff;
 
 
     struct sockaddr_in serv_addr; // where we Want to get to
@@ -67,17 +67,12 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET; 
-    serv_addr.sin_addr.s_addr = INADDR_ANY; 
-    serv_addr.sin_port = htonl(argv[2]);
-
-    memset(&serv_addr, 0, sizeof(serv_addr));
+    memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(10000); // Note: htons for endiannes
-    serv_addr.sin_addr.s_addr = inet_addr(inet_pton(argv[1])); 
+    serv_addr.sin_port = htonl(argv[2]); //specified port
+    serv_addr.sin_addr.s_addr = inet_addr(inet_pton(argv[1])); //specified IP address 
 
-    if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+    if(connect(sockfd, (struct sockaddr*) &serv_addr, addrsize) < 0) {
         perror(" Could not connect \n");
         exit(1);
     }
@@ -136,6 +131,8 @@ int main(int argc, char* argv[]){
         memset(send_buff, 0, MB);
 
     }
+
+    // Reading the number of prontable chars from Server 
     
     recv_buff = &C;
     read_from_buff = 0; 
