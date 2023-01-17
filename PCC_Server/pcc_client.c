@@ -21,7 +21,6 @@ int main(int argc, char* argv[]){
 
     int sockfd     = -1;
     int client_to_srver_fd    = -1;
-    int client_to_srver_fd    = -1;
     int read_from_buff =  0;
     int written_to_buff = 0;
     int left_in_buff =0;
@@ -134,12 +133,13 @@ int main(int argc, char* argv[]){
 
     // Reading the number of prontable chars from Server 
     
-    recv_buff = &C;
+    //recv_buff = &C;
     read_from_buff = 0; 
     bytes_left = N_SIZE;
     while(bytes_read < N_SIZE){
 
-        n = read(sockfd, recv_buff + bytes_read, N_SIZE);
+        //n = read(sockfd, recv_buff + bytes_read, N_SIZE);
+        n = read(sockfd, &C + bytes_read, N_SIZE);
         if(n < 0){
             perror("read call failed \n");
             exit(1);
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]){
     printf("# of printable characters: %u\n", ntohl(C));
     close(fd);
     free(send_buff);
-    free(recv_buff);
+    //free(recv_buff);
     return 0; 
 }
 
