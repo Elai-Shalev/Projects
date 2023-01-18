@@ -13,13 +13,13 @@
 
 #define BACKLOG 10
 #define N_SIZE 4
-#define MB 1000000
+#define MB 500
 #define _GNU_SOURCE
 
 
 void update_pcc_total();
 void init_pcc_total();
-void update_pcc_current(char* recv_buff);
+void update_pcc_current(char* recv_buff, int n);
 void print_pcc();
 
 
@@ -62,16 +62,20 @@ void init_pcc(){
 void update_pcc_total(){
     
     total_C += C;
-    for(int i =0; i < 95; i++){
+    for(int i = 0; i < 95; i++){
         pcc_total[i] += pcc_current[i]; 
     }
-    memset(pcc_current, 0, 95);
+
+    for(int j=0; j<95; j++){
+        pcc_current[j] = 0;
+    }
+    
     C = 0;
 }
 
-void update_pcc_current(char* recv_buff){
+void update_pcc_current(char* recv_buff, int n){
 
-    for(int i=0; i < strlen(recv_buff); i++){
+    for(int i=0; i < n; i++){
 
         int c_i = (int)recv_buff[i];
         if (c_i >= 32 && c_i <= 126){
@@ -87,7 +91,6 @@ void print_pcc(){
     for(int i=0; i<95; i++){
         printf("char '%c' : %u times\n", (char)(i+32), pcc_total[i]);
     }
-    
 }
 
 
@@ -95,7 +98,7 @@ int main(int argc, char* argv[]){
 
     int listen_fd;
     uint32_t N;
-    int read_from_buff =  0;
+    //int read_from_buff =  0;
     int bytes_written = 0;
     //int total_sent = 0;
     //int total_left = 0;
@@ -103,6 +106,7 @@ int main(int argc, char* argv[]){
     int optval = 1;
     int bytes_left = 0;
     int bytes_read = 0;
+    int done = 1;
     
     char* recv_buff; // Size will vary 
 
@@ -167,22 +171,27 @@ int main(int argc, char* argv[]){
             perror("Accept Problem\n");
             exit(1);
         }
-
+        done =1;
         
         bytes_left = N_SIZE;
         bytes_read = 0;
-        read_from_buff =0;
+        //read_from_buff =0;
         N = 0;       
 
         // Recieve N
         while(bytes_read < N_SIZE){
             n = read(conn_fd, &N + bytes_read, bytes_left); //reading into N
-            if(n < 0){
-                perror("read call failed \n");
-                exit(1);
+            
+            if (n == 0 || (n<0 && errno != EINTR)){
+                fprintf(stderr, "Error in recieving N\n");
+                done =0; 
+                break;
             }
-            bytes_read += n;
-            bytes_left -= n;
+            
+            if(n > 0){
+                bytes_read += n;
+                bytes_left -= n;    
+            }
 
         }
         
@@ -190,56 +199,68 @@ int main(int argc, char* argv[]){
         //Prepare for reading N bytes
         N = ntohl(N); // Convert to host order 
         //recv_buff = (char*)malloc(MB); //allocating first MB
-        memset(recv_buff, 0, MB);
+        
+        for(int j=0; j<MB; j++){
+            recv_buff[j] = 0;
+        }
+
         bytes_left = N;
         bytes_read = 0;
-        read_from_buff = 0; 
+        //read_from_buff = 0; 
 
-
-        //Read N Bytes
-        while(bytes_left > 0){
-            
-            n = MB;
-            while (n == MB){
-                n = read(conn_fd, recv_buff + read_from_buff, MB-read_from_buff);
-                if(n < 0){
-                    perror("read call failed \n");
-                    exit(1);
-                }
-                bytes_read += n;
-                bytes_left -= n;
-                read_from_buff += n;
+        if (done == 1){
+            //Read N Bytes
+            while(bytes_left > 0){
                 
+                n = read(conn_fd, recv_buff, MB);
+                if (n == 0 || (n<0 && errno != EINTR)){
+                    fprintf(stderr, "Error in reading \n");
+                    done = 0; 
+                    break;
+                }
+            
+                if(n > 0){
+                    bytes_left -= n;
+                    update_pcc_current(recv_buff, n);
+                }
             }
-            // buffer full
-            update_pcc_current(recv_buff);
-            read_from_buff = 0;         
         }
-        // all N bytes are read
 
+
+        // all N bytes are read
         // Send C to the client
         bytes_left = N_SIZE; // N is a 32 bit number 
         bytes_written = 0;
         C = htonl(C);
 
+        if(done == 1){
         while(bytes_left > 0)
-        {
-            //print_pcc();
-            n = write(conn_fd, &C + bytes_written, bytes_left);  
-            if(n < 0){
-                perror(" Write call failed \n");
-                exit(1);
-            }
+            {
+                //print_pcc();
+                n = write(conn_fd, &C + bytes_written, bytes_left);  
+                
+                if (n == 0 || (n<0 && errno != EINTR)){
+                    fprintf(stderr, "Error in writing\n");
+                    done = 0; 
+                    break;
+                }
 
-            bytes_written  += n;
-            bytes_left -= n;
+                if(n > 0){
+                    bytes_written  += n;
+                    bytes_left -= n;
+                }
+            }   
         }
-        update_pcc_total();
+
+        if (done){
+            update_pcc_total();
+        }
         close(conn_fd);
         conn_fd = -1;
     }
 
     close(conn_fd);
+    conn_fd = -1;
     free(recv_buff);
     print_pcc();
     free(pcc_current);

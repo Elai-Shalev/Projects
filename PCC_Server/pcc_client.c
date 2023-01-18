@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#define MB 1000000
+#define MB 500
 #define N_SIZE 4
 uint32_t get_file_size(FILE* fd);
 
@@ -81,21 +81,27 @@ int main(int argc, char* argv[]){
     while(bytes_left > 0)
     {
         n = write(sockfd, &N + bytes_written, bytes_left);
-        
-        if(n < 0){
-            perror(" Write call failed \n");
-            exit(1);
+        if (n == 0 || (n<0 && errno != EINTR)){
+            perror("Write N failed\n");
+            //done = 0; 
+            break;
+        }
+    
+        if(n > 0){
+            bytes_written  += n;
+            bytes_left -= n;
         }
 
-        bytes_written  += n;
-        bytes_left -= n;
         
     }
 
     // N is sent 
     // Now sending the data 
 
-    memset(send_buff, 0, MB);
+    
+    for(int j=0; j<MB; j++){
+        send_buff[j] = 0;
+    }
 
     total_left = file_size; 
     total_sent = 0; 
@@ -112,20 +118,24 @@ int main(int argc, char* argv[]){
         left_in_buff = n; 
         read_from_buff = 0; 
 
-        
         while(left_in_buff > 0){
             n = write(sockfd, send_buff + read_from_buff, left_in_buff);
-            if(n < 0){
-                perror(" write call failed \n");
-                exit(1);
+            if (n == 0 || (n<0 && errno != EINTR)){
+                fprintf(stderr, "Error in writing \n");
+                //done = 0; 
+                break;
             }
-            read_from_buff  += n;
-            left_in_buff -= n;
+        
+            if(n > 0){
+                read_from_buff  += n;
+                left_in_buff -= n;
+            }
+            
         }
         
         total_sent += read_from_buff;
         total_left -= read_from_buff;
-        memset(send_buff, 0, MB);
+        
     }
 
     // Reading the number of prontable chars from Server 
@@ -136,12 +146,17 @@ int main(int argc, char* argv[]){
     while(bytes_read < N_SIZE){
 
         n = read(sockfd, &C + bytes_read, bytes_left);
-        if(n < 0){
-            perror("read call failed \n");
-            exit(1);
+        
+        if (n == 0 || (n<0 && errno != EINTR)){
+            //done = 0; 
+            break;
         }
-        bytes_read += n;
-        bytes_left -= n;
+    
+        if(n > 0){
+            bytes_read += n;
+            bytes_left -= n;
+        }
+        
     }
     printf("# of printable characters: %u\n", ntohl(C));
     fclose(fd);
