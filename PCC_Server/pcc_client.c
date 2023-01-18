@@ -20,22 +20,20 @@ int main(int argc, char* argv[]){
     uint32_t N_nbo; 
 
     int sockfd     = -1;
-    int client_to_srver_fd    = -1;
     int read_from_buff =  0;
-    int written_to_buff = 0;
     int left_in_buff =0;
-    int total_sent 0;
-    int total_left 0;
-    int n_sent = 0;
+    int total_sent =0;
+    int total_left =0;
+    int bytes_read =0;
+    int bytes_written = 0;
+    int bytes_left =0;
+    int n = 0;
     uint32_t C = 0;
     
-    char* recv_buff;
     char* send_buff;
 
 
     struct sockaddr_in serv_addr; // where we Want to get to
-    struct sockaddr_in client_addr;   // where we actually connected through 
-    struct sockaddr_in peer_addr; // where we actually connected to
     socklen_t addrsize = sizeof(struct sockaddr_in );
     
 
@@ -45,7 +43,7 @@ int main(int argc, char* argv[]){
     }
 
     fd = fopen(argv[3], "O_RDONLY");
-    if (fd < 1){
+    if (fd == NULL){
         perror("Error opening file");
         exit(1);
     }
@@ -60,7 +58,7 @@ int main(int argc, char* argv[]){
         exit(1);
     }
     
-    sockfd = socket(AF_INET, SOCK_STREAM);
+    sockfd = socket(AF_INET, SOCK_STREAM,0);
     if (sockfd < 0){
         perror("Could not create socket \n");
         exit(1);
@@ -68,8 +66,9 @@ int main(int argc, char* argv[]){
 
     memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htonl(argv[2]); //specified port
-    serv_addr.sin_addr.s_addr = inet_addr(inet_pton(argv[1])); //specified IP address 
+    serv_addr.sin_port = htonl(atoi(argv[2])); //specified port
+    //serv_addr.sin_addr.s_addr = inet_addr(inet_pton(AF_INET, argv[1])); //specified IP address 
+    inet_pton(AF_INET, argv[1], &serv_addr.sin_addr.s_addr);
 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, addrsize) < 0) {
         perror(" Could not connect \n");
@@ -79,18 +78,19 @@ int main(int argc, char* argv[]){
     // sending N 
     memset(send_buff, N_nbo, N_SIZE);
     bytes_left = N_SIZE; // N is a 32 bit number 
+    bytes_written = 0;
     while(bytes_left > 0)
     {
-        n_sent = write(sockfd, send_buff + bytes_written, bytes_left);
+        n = write(sockfd, send_buff + bytes_written, bytes_left);
         // check if error occured (client closed connection?)
         
-        if(n_sent < 0){
+        if(n < 0){
             perror(" Write call failed \n");
             exit(1);
         }
 
-        bytes_written  += n_sent;
-        bytes_left -= n_sent;
+        bytes_written  += n;
+        bytes_left -= n;
     }
 
     // N is sent 
@@ -99,9 +99,9 @@ int main(int argc, char* argv[]){
     memset(send_buff, 0, MB);
 
     total_left = file_size; 
-    total_bytes_sent = 0; 
+    total_sent = 0; 
     read_from_buff = 0; 
-    written_to_buff = 0; 
+    //written_to_buff = 0; 
     
     while(total_left > 0){
 
@@ -115,15 +115,15 @@ int main(int argc, char* argv[]){
         read_from_buff = 0; 
         
         while(left_in_buff > 0){
-            n_sent = write(sockfd, send_buff + read_from_buff, left_in_buff);
+            n = write(sockfd, send_buff + read_from_buff, left_in_buff);
             // check if error occured (client closed connection?)
-            if(n_sent < 0){
+            if(n < 0){
                 perror(" write call failed \n");
                 exit(1);
             }
             
-            read_from_buff  += nsent;
-            left_in_buff -= nsent;
+            read_from_buff  += n;
+            left_in_buff -= n;
         }
         total_sent += read_from_buff;
         total_left -= read_from_buff;
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]){
     while(bytes_read < N_SIZE){
 
         //n = read(sockfd, recv_buff + bytes_read, N_SIZE);
-        n = read(sockfd, &C + bytes_read, N_SIZE);
+        n = read(sockfd, &C + bytes_read, bytes_left);
         if(n < 0){
             perror("read call failed \n");
             exit(1);
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]){
     }
 
     printf("# of printable characters: %u\n", ntohl(C));
-    close(fd);
+    fclose(fd);
     free(send_buff);
     //free(recv_buff);
     return 0; 
@@ -168,13 +168,3 @@ uint32_t get_file_size(FILE* fd){
 
 
 
-
-
-
-
-    
-
-
-
-
-}
