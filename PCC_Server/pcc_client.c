@@ -67,7 +67,6 @@ int main(int argc, char* argv[]){
     memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = atoi(argv[2]); //specified port
-
     inet_pton(AF_INET, argv[1], &serv_addr.sin_addr.s_addr);
 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, addrsize) < 0) {
@@ -84,7 +83,7 @@ int main(int argc, char* argv[]){
         if (n == 0 || (n<0 && errno != EINTR)){
             perror("Write N failed\n");
             //done = 0; 
-            break;
+            exit(1);
         }
     
         if(n > 0){
@@ -99,7 +98,7 @@ int main(int argc, char* argv[]){
     // Now sending the data 
 
     
-    for(int j=0; j<MB; j++){
+    for(int j=0; j < MB; j++){
         send_buff[j] = 0;
     }
 
@@ -123,7 +122,7 @@ int main(int argc, char* argv[]){
             if (n == 0 || (n<0 && errno != EINTR)){
                 fprintf(stderr, "Error in writing \n");
                 //done = 0; 
-                break;
+                exit(1);
             }
         
             if(n > 0){
@@ -149,7 +148,7 @@ int main(int argc, char* argv[]){
         
         if (n == 0 || (n<0 && errno != EINTR)){
             //done = 0; 
-            break;
+            exit(1);
         }
     
         if(n > 0){

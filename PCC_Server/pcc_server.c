@@ -182,7 +182,7 @@ int main(int argc, char* argv[]){
         while(bytes_read < N_SIZE){
             n = read(conn_fd, &N + bytes_read, bytes_left); //reading into N
             
-            if (n == 0 || (n<0 && errno != EINTR)){
+            if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                 fprintf(stderr, "Error in recieving N\n");
                 done =0; 
                 break;
@@ -213,7 +213,7 @@ int main(int argc, char* argv[]){
             while(bytes_left > 0){
                 
                 n = read(conn_fd, recv_buff, MB);
-                if (n == 0 || (n<0 && errno != EINTR)){
+                if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                     fprintf(stderr, "Error in reading \n");
                     done = 0; 
                     break;
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]){
                 //print_pcc();
                 n = write(conn_fd, &C + bytes_written, bytes_left);  
                 
-                if (n == 0 || (n<0 && errno != EINTR)){
+                if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                     fprintf(stderr, "Error in writing\n");
                     done = 0; 
                     break;
