@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <signal.h>
+
 
 #define BACKLOG 10
 #define N_SIZE 4
@@ -19,23 +21,25 @@ void update_pcc_total();
 void init_pcc_total();
 void update_pcc_current(char* recv_buff);
 
-void sig_handler(int signum){
-    // do 
-}
 
-int* pcc_total; 
-int* pcc_current;
+
+unsigned int* pcc_total; 
+unsigned int* pcc_current;
 uint32_t C;
 uint32_t total_C;
+int stop_service =0;
 
+void signal_handler(int signum){
+    stop_service = 1; 
+} 
 
 void init_pcc(){
-    pcc_total = (int*)calloc(sizeof(int), 95);
+    pcc_total = (unsigned int*)calloc(sizeof(unsigned int), 95);
     if(pcc_total < 0){
         perror("insufficient memory \n");
         exit(1);
     }
-    pcc_current = (int*)calloc(sizeof(int), 95);
+    pcc_current = (unsigned int*)calloc(sizeof(unsigned int), 95);
     if(pcc_current < 0){
         perror("insufficient memory \n");
         exit(1);
@@ -64,11 +68,20 @@ void update_pcc_current(char* recv_buff){
 
 }
 
+void print_pcc(){
+
+    for(int i=0; i<95; i++){
+        printf("char '%c' : %u times\n", (char)(i+32), pcc_total[i]);
+    }
+    
+}
+
 
 int main(int argc, char* argv[]){
 
     int listen_fd;
     int conn_fd;
+    uint32_t N;
     int read_from_buff =  0;
     int bytes_written = 0;
     //int total_sent = 0;
@@ -77,7 +90,6 @@ int main(int argc, char* argv[]){
     int optval = 1;
     int bytes_left = 0;
     int bytes_read = 0;
-    uint32_t N;
     
     char* recv_buff; // Size will vary 
 
@@ -85,6 +97,11 @@ int main(int argc, char* argv[]){
         perror("Invalid Input!\n");
         exit(1);
     }
+
+
+    //Signal Init
+
+    signal(SIGINT, signal_handler);
 
     init_pcc(); 
 
@@ -125,10 +142,7 @@ int main(int argc, char* argv[]){
     }
 
     
-    while(1){
-
-        // Handle Sigint 
-
+    while(!stop_service){
 
         //Accept and establish Connection
         conn_fd = accept( listen_fd, (struct sockaddr*) NULL, NULL);
@@ -197,10 +211,11 @@ int main(int argc, char* argv[]){
         }
         update_pcc_total();
         close(conn_fd);
+        free(recv_buff);
     }
 
+    print_pcc();
     free(pcc_current);
-    free(recv_buff);
     free(pcc_total);
-    
+    exit(0);
 }
