@@ -66,8 +66,12 @@ int main(int argc, char* argv[]){
 
     memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = atoi(argv[2]); //specified port
-    inet_pton(AF_INET, argv[1], &serv_addr.sin_addr.s_addr);
+    serv_addr.sin_port = htons(atoi(argv[2])); //specified port
+    if ( 1 > inet_pton(AF_INET, argv[1], &serv_addr.sin_addr.s_addr)){
+        perror("client failed at inet pton\n");
+        close(sockfd);
+        return 1;
+    }
 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, addrsize) < 0) {
         perror(" Could not connect \n");
