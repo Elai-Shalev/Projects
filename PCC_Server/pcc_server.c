@@ -161,7 +161,6 @@ int main(int argc, char* argv[]){
 
     recv_buff = (char*)malloc(MB); //allocating first MB
 
-
     
     while(stop_service != 1){
         
@@ -184,7 +183,7 @@ int main(int argc, char* argv[]){
             
             if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                 fprintf(stderr, "Error in recieving N\n");
-                done =0; 
+                done = 0; 
                 break;
             }
             
@@ -233,9 +232,8 @@ int main(int argc, char* argv[]){
         bytes_written = 0;
         C = htonl(C);
 
-        if(done == 1){
-        while(bytes_left > 0)
-            {
+        if(done == 1 ){
+            while(bytes_left > 0){
                 //print_pcc();
                 n = write(conn_fd, &C + bytes_written, bytes_left);  
                 
@@ -252,17 +250,19 @@ int main(int argc, char* argv[]){
             }   
         }
 
-        if (done){
+        if (done == 1){
             update_pcc_total();
         }
-        close(conn_fd);
         conn_fd = -1;
+        close(conn_fd);
+        
     }
 
+    print_pcc();
     close(conn_fd);
+    close(listen_fd);
     conn_fd = -1;
     free(recv_buff);
-    print_pcc();
     free(pcc_current);
     free(pcc_total);
     exit(0);

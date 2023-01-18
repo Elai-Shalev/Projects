@@ -163,6 +163,7 @@ int main(int argc, char* argv[]){
     }
     printf("# of printable characters: %u\n", ntohl(C));
     fclose(fd);
+    close(sockfd);
     free(send_buff);
     
     return 0; 
