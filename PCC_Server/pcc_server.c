@@ -30,8 +30,9 @@ uint32_t C;
 uint32_t total_C;
 int stop_service =0;
 int conn_fd = -1;
+int listen_fd = -1;
 
-void signal_handler(int signum){
+void signal_handler(int signal_number){
     
     if(conn_fd == -1){
         print_pcc();
@@ -41,6 +42,7 @@ void signal_handler(int signum){
     }
     else{
         stop_service = 1; 
+        close(listen_fd); 
     }
     
     return;
@@ -96,7 +98,7 @@ void print_pcc(){
 
 int main(int argc, char* argv[]){
 
-    int listen_fd;
+    
     uint32_t N;
     //int read_from_buff =  0;
     int bytes_written = 0;
@@ -164,13 +166,14 @@ int main(int argc, char* argv[]){
     
     while(stop_service != 1){
         
+        done =1;
         //Accept and establish Connection
         conn_fd = accept(listen_fd, (struct sockaddr*) &peer_addr, &addrsize);
         if(conn_fd < 0) {
             perror("Accept Problem\n");
             exit(1);
         }
-        done =1;
+        
         
         bytes_left = N_SIZE;
         bytes_read = 0;
@@ -178,10 +181,11 @@ int main(int argc, char* argv[]){
         N = 0;       
 
         // Recieve N
+        if (done == 1){
         while(bytes_read < N_SIZE){
             n = read(conn_fd, &N + bytes_read, bytes_left); //reading into N
-            
-            if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
+            if (n == 0 || (n<0 && errno != EINTR)){
+            //if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                 fprintf(stderr, "Error in recieving N\n");
                 done = 0; 
                 break;
@@ -193,14 +197,18 @@ int main(int argc, char* argv[]){
             }
 
         }
+        }
+        
         
         
         //Prepare for reading N bytes
         N = ntohl(N); // Convert to host order 
         //recv_buff = (char*)malloc(MB); //allocating first MB
         
+        if (done == 1){ 
         for(int j=0; j<MB; j++){
             recv_buff[j] = 0;
+        }
         }
 
         bytes_left = N;
@@ -212,7 +220,8 @@ int main(int argc, char* argv[]){
             while(bytes_left > 0){
                 
                 n = read(conn_fd, recv_buff, MB);
-                if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
+                if (n == 0 || (n<0 && errno != EINTR)){
+                //if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                     fprintf(stderr, "Error in reading \n");
                     done = 0; 
                     break;
@@ -237,7 +246,8 @@ int main(int argc, char* argv[]){
                 //print_pcc();
                 n = write(conn_fd, &C + bytes_written, bytes_left);  
                 
-                if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
+                if (n == 0 || (n<0 && errno != EINTR)){
+                //if (n == 0 || (n<0 && (errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE))){
                     fprintf(stderr, "Error in writing\n");
                     done = 0; 
                     break;
