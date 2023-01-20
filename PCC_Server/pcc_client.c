@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#define MB 50000
+#define MB 50000 //MB is a macro for up-to a MegaByte in size 
 #define N_SIZE 4
 uint32_t get_file_size(FILE* fd);
 
@@ -18,7 +18,6 @@ int main(int argc, char* argv[]){
     uint32_t file_size; 
     FILE * fd;
     uint32_t N;
-
     int sockfd     = -1;
     int read_from_buff =  0;
     int left_in_buff =0;
@@ -33,15 +32,16 @@ int main(int argc, char* argv[]){
     char* send_buff;
 
 
-    struct sockaddr_in serv_addr; // where we Want to get to
+    struct sockaddr_in serv_addr; 
     socklen_t addrsize = sizeof(struct sockaddr_in );
     
-
+    //Argument Validity Check
     if(argc != 4){
         perror("Invalid Input!\n");
         exit(1);
     }
 
+    //Setting up a FILE for reading the file
     fd = fopen(argv[3], "r");
     if (fd == NULL){
         perror("Error opening file");
@@ -58,6 +58,7 @@ int main(int argc, char* argv[]){
         exit(1);
     }
     
+    //SOCKET 
     sockfd = socket(AF_INET, SOCK_STREAM,0);
     if (sockfd < 0){
         perror("Could not create socket \n");
@@ -73,24 +74,30 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
+    //CONNECT
     if(connect(sockfd, (struct sockaddr*) &serv_addr, addrsize) < 0) {
         perror(" Could not connect \n");
         exit(1);
     }
 
-    // sending N 
-    bytes_left = N_SIZE; // N is a 32 bit number 
+    // Sending N 
+    bytes_left = N_SIZE; // N is a 32 bit number, defined macro as 4B
     bytes_written = 0;
     while(bytes_left > 0)
     {
         n = write(sockfd, &N + bytes_written, bytes_left);
-        if (n == 0 || (n<0 && errno != EINTR)){
-            perror("Write N failed\n");
-            //done = 0; 
-            exit(1);
+
+        // Error check format throughout assignment according to the format given in: 
+        // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+        
+        if (n <= 0){
+            if (errno != EINTR){
+                perror("Write N failed\n");
+                exit(1);
+            }
         }
     
-        if(n > 0){
+        else{
             bytes_written  += n;
             bytes_left -= n;
         }
@@ -100,6 +107,7 @@ int main(int argc, char* argv[]){
 
     // N is sent 
     // Now sending the data 
+
     for(int j=0; j < MB; j++){
         send_buff[j] = 0;
     }
@@ -110,7 +118,7 @@ int main(int argc, char* argv[]){
     
     while(total_left > 0){
 
-        // 1 MB of data in buffer
+        // Buffer is up to MB in size
         n = fread(send_buff, sizeof(char), MB/sizeof(char), fd);
         if (n < 0){
             perror(" Fread call failed \n");
@@ -121,13 +129,14 @@ int main(int argc, char* argv[]){
 
         while(left_in_buff > 0){
             n = write(sockfd, send_buff + read_from_buff, left_in_buff);
-            if (n == 0 || (n<0 && errno != EINTR)){
-                fprintf(stderr, "Error in writing \n");
-                //done = 0; 
-                exit(1);
+            if (n <= 0){
+                if(errno != EINTR){
+                    fprintf(stderr, "Error in writing \n");
+                    exit(1);
+                }
             }
-        
-            if(n > 0){
+
+            else{
                 read_from_buff  += n;
                 left_in_buff -= n;
             }
@@ -139,7 +148,7 @@ int main(int argc, char* argv[]){
         
     }
 
-    // Reading the number of prontable chars from Server 
+    // Reading the number of printable chars from Server into C
     
     read_from_buff = 0; 
     bytes_left = N_SIZE;
@@ -148,12 +157,14 @@ int main(int argc, char* argv[]){
 
         n = read(sockfd, &C + bytes_read, bytes_left);
         
-        if (n == 0 || (n<0 && errno != EINTR)){
-            //done = 0; 
-            exit(1);
+        if (n <= 0){
+            if (errno != EINTR){
+                fprintf(stderr, "Error in reading \n");
+                exit(1);
+            }
         }
-    
-        if(n > 0){
+
+        else{
             bytes_read += n;
             bytes_left -= n;
         }
