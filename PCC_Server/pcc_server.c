@@ -13,7 +13,7 @@
 
 #define BACKLOG 10
 #define N_SIZE 4
-#define MB 500
+#define MB 50000 //MB is a macro for up-to a MegaByte in size 
 #define _GNU_SOURCE
 
 
@@ -32,22 +32,28 @@ int stop_service =0;
 int conn_fd = -1;
 int listen_fd = -1;
 
+
+//Signal handler for SIGINT, responsible for client atomicity
 void signal_handler(int signal_number){
     
-    if(conn_fd == -1){
-        print_pcc();
+    // active client 
+    if(conn_fd != -1){
+        stop_service = 1; //flag to signify loop end condition
+        close(listen_fd); //close access to listen queue
+    }
+
+    //between clients or before first client
+    else{ 
+        print_pcc(); 
         free(pcc_current);
         free(pcc_total);
         exit(0);
-    }
-    else{
-        stop_service = 1; 
-        close(listen_fd); 
     }
     
     return;
 } 
 
+//initilize a data structure to keep current and global pcc arrays
 void init_pcc(){
     pcc_total = (unsigned int*)calloc(sizeof(unsigned int), 95);
     if(pcc_total < 0){
@@ -61,6 +67,7 @@ void init_pcc(){
     }
 }
 
+//updates pcc total with the current pcc, and zero's the current pcc
 void update_pcc_total(){
     
     total_C += C;
@@ -100,10 +107,7 @@ int main(int argc, char* argv[]){
 
     
     uint32_t N;
-    //int read_from_buff =  0;
     int bytes_written = 0;
-    //int total_sent = 0;
-    //int total_left = 0;
     int n = 0;
     int optval = 1;
     int bytes_left = 0;
@@ -112,16 +116,13 @@ int main(int argc, char* argv[]){
     
     char* recv_buff; // Size will vary 
 
+    //Argument correctness
     if(argc != 2){
         perror("Invalid Input!\n");
         exit(1);
     }
 
-
-    //Signal Init
-
-    signal(SIGINT, signal_handler);
-
+    signal(SIGINT, signal_handler); //Signal handler registration
     init_pcc(); 
 
     // SOCKET INIT
@@ -135,7 +136,7 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
-    //SO_REUSE
+    //SO_REUSEADDR
     if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
         // handle setsockopt error
         perror("set sock problem\n");
@@ -148,7 +149,7 @@ int main(int argc, char* argv[]){
     serv_addr.sin_port = htons(atoi(argv[1]));
     
 
-    // BIND
+    // BIND 
     if( 0 != bind(listen_fd, (struct sockaddr*) &serv_addr, addrsize)){
         perror("Bind Problem\n");
         exit(1);
@@ -163,30 +164,34 @@ int main(int argc, char* argv[]){
 
     recv_buff = (char*)malloc(MB); //allocating first MB
 
-    
+
+    //while stop service flag is off, loop to accept and handle new clients 
     while(stop_service != 1){
         
-        done = 1;
+        
         //Accept and establish Connection
         conn_fd = accept(listen_fd, (struct sockaddr*) &peer_addr, &addrsize);
         if(conn_fd < 0) {
             perror("Accept Problem\n");
             exit(1);
         }
-        
-        
+        done = 1; //done flag will signify the disregarding of the current client 
         bytes_left = N_SIZE;
         bytes_read = 0;
         //read_from_buff =0;
         N = 0;       
 
-        // Recieve N
+        // Recieve N from client
         while(bytes_read < N_SIZE){
-            n = read(conn_fd, &N + bytes_read, bytes_left); //reading into N
-            if (n<=0){
+
+            // Error check format throughout assignment according to the format given in: 
+            // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+
+            n = read(conn_fd, &N + bytes_read, bytes_left); //reading into &N
+            if (n<=0){ //equal 0 check for EOF
                 if (errno != EINTR){
                     fprintf(stderr, "Error in recieving N\n");
-                    done = 0; 
+                    done = 0; //changing "done" flag to avoid updating current pcc into global
                     break;
                 }
             }
@@ -197,13 +202,9 @@ int main(int argc, char* argv[]){
             }
         }
         
-        
-        
-        
         //Prepare for reading N bytes
-        N = ntohl(N); // Convert to host order 
-        //recv_buff = (char*)malloc(MB); //allocating first MB
-        
+
+        N = ntohl(N); // Convert to host order         
         if (done == 1){ 
             for(int j=0; j<MB; j++){
                 recv_buff[j] = 0;
@@ -235,7 +236,6 @@ int main(int argc, char* argv[]){
             }
         }
 
-
         // all N bytes are read
         // Send C to the client
         bytes_left = N_SIZE; // N is a 32 bit number 
@@ -262,12 +262,13 @@ int main(int argc, char* argv[]){
             }   
         }
 
-        if (done == 1){
+        //only if done is 1 then the flow is completed and pcc_total an be updated 
+        if (done == 1){ 
             update_pcc_total(); 
         }
 
         else{
-            //revert current clint 
+            //reset current client pcc to zeros
             for(int j=0; j<95; j++){
                 pcc_current[j] = 0;
             }
@@ -276,12 +277,12 @@ int main(int argc, char* argv[]){
         }
         
         close(conn_fd);
-        conn_fd = -1;
+        conn_fd = -1; //flag to mark "between clients"
         
     }
 
     
-    print_pcc();
+    print_pcc(); //after last client done, print results
     close(conn_fd);
     close(listen_fd);
     conn_fd = -1;

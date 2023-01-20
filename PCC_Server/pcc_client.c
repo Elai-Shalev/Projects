@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#define MB 500
+#define MB 50000
 #define N_SIZE 4
 uint32_t get_file_size(FILE* fd);
 
@@ -100,8 +100,6 @@ int main(int argc, char* argv[]){
 
     // N is sent 
     // Now sending the data 
-
-    
     for(int j=0; j < MB; j++){
         send_buff[j] = 0;
     }
